@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { auth } from "@/auth";
 import prisma from "@/lib/db";
 import { ModerationQueue } from "@/components/moderation-queue";
@@ -30,6 +31,9 @@ export default async function AdminPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2 text-xs">
+          <Link href="/admin/agents" className="rounded-full bg-[var(--primary)] px-3 py-1 font-semibold text-[var(--primary-foreground)]">
+            Dawah agents →
+          </Link>
           {Object.entries(counts).map(([k, v]) => (
             <span key={k} className="rounded-full bg-[var(--surface-muted)] px-3 py-1 font-semibold">
               {k}: {v}
