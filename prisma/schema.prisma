@@ -1,0 +1,246 @@
+// Prisma schema for "The True Path Islam" — multi-lingual dawah platform.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Identity / staff (dawah supervisors who review AI answers and content)
+// ---------------------------------------------------------------------------
+enum Role {
+  ADMIN
+  SCHOLAR // dawah supervisor / reviewer
+  EDITOR
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(EDITOR)
+  createdAt    DateTime @default(now())
+
+  reviewedQuestions Question[] @relation("QuestionReviewer")
+}
+
+// ---------------------------------------------------------------------------
+// Quran, translations & tafsir
+// ---------------------------------------------------------------------------
+model Surah {
+  id            Int      @id @default(autoincrement())
+  number        Int      @unique
+  nameAr        String
+  nameEn        String
+  nameTranslit  String
+  revelation    String // Meccan | Medinan
+  verseCount    Int
+  verses        Verse[]
+}
+
+model Verse {
+  id            Int      @id @default(autoincrement())
+  surahId       Int
+  surah         Surah    @relation(fields: [surahId], references: [id], onDelete: Cascade)
+  number        Int // global verse index (1..6236)
+  numberInSurah Int
+  textAr        String
+  juz           Int?
+  page          Int?
+  translations  Translation[]
+  tafsirs       Tafsir[]
+
+  @@unique([surahId, numberInSurah])
+  @@index([number])
+}
+
+model TranslationLanguage {
+  code          String        @id // en, zh, hi, ja, ru, ar
+  nameAr        String
+  nameEn        String
+  direction     String        @default("ltr")
+  translations  Translation[]
+
+  @@map("TranslationLanguage")
+}
+
+model Translation {
+  id          Int                  @id @default(autoincrement())
+  verseId     Int
+  verse       Verse                @relation(fields: [verseId], references: [id], onDelete: Cascade)
+  languageCode String
+  language    TranslationLanguage  @relation(fields: [languageCode], references: [code])
+  author      String
+  text        String
+
+  @@unique([verseId, languageCode, author])
+  @@index([languageCode])
+}
+
+model TafsirSource {
+  id        Int      @id @default(autoincrement())
+  slug      String   @unique
+  nameAr    String
+  nameEn    String
+  author    String
+  language  String   @default("ar")
+  tafsirs   Tafsir[]
+}
+
+model Tafsir {
+  id        Int          @id @default(autoincrement())
+  verseId   Int
+  verse     Verse        @relation(fields: [verseId], references: [id], onDelete: Cascade)
+  sourceId  Int
+  source    TafsirSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  text      String
+
+  @@unique([verseId, sourceId])
+}
+
+// ---------------------------------------------------------------------------
+// Hadith & the Prophet's biography (Seerah)
+// ---------------------------------------------------------------------------
+model HadithCollection {
+  id        Int             @id @default(autoincrement())
+  slug      String          @unique
+  nameAr    String
+  nameEn    String
+  author    String?
+  hadiths   Hadith[]
+  books     HadithBook[]
+}
+
+enum HadithGrade {
+  SAHIH   // authentic
+  HASAN   // good
+  DAIF    // weak
+  UNKNOWN
+}
+
+model HadithBook {
+  id           Int              @id @default(autoincrement())
+  collectionId Int
+  collection   HadithCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  number       Int
+  nameAr       String?
+  nameEn       String
+  hadiths      Hadith[]
+
+  @@unique([collectionId, number])
+}
+
+model Hadith {
+  id           Int              @id @default(autoincrement())
+  collectionId Int
+  collection   HadithCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  bookId       Int?
+  book         HadithBook?      @relation(fields: [bookId], references: [id], onDelete: SetNull)
+  number       Int
+  arabic       String
+  english      String?
+  grade        HadithGrade      @default(UNKNOWN)
+  topics       HadithTopic[]    @relation("HadithTopics")
+
+  @@unique([collectionId, number])
+  @@index([grade])
+}
+
+model HadithTopic {
+  id        Int      @id @default(autoincrement())
+  slug      String   @unique
+  nameAr    String
+  nameEn    String
+  hadiths   Hadith[] @relation("HadithTopics")
+}
+
+model BiographyEvent {
+  id            Int     @id @default(autoincrement())
+  order         Int
+  era           String // e.g. "مكة" / "المدينة"
+  year          String?
+  titleAr       String
+  titleEn       String
+  descriptionAr String
+  descriptionEn String
+}
+
+// ---------------------------------------------------------------------------
+// Interactive Q&A engine
+// ---------------------------------------------------------------------------
+model QaCategory {
+  id        Int        @id @default(autoincrement())
+  slug      String     @unique
+  nameAr    String
+  nameEn    String
+  questions Question[]
+}
+
+enum QuestionStatus {
+  NEW          // awaiting review
+  AI_DRAFTED   // AI produced a draft, pending scholar approval
+  PUBLISHED    // approved and publicly visible
+  REJECTED
+}
+
+model Question {
+  id            String         @id @default(cuid())
+  locale        String         @default("en")
+  visitorName   String?
+  visitorEmail  String?
+  body          String
+  categoryId    Int?
+  category      QaCategory?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  status        QuestionStatus @default(NEW)
+
+  aiDraft       String?
+  aiConfidence  Float?
+  aiProvider    String?
+  aiModel       String?
+  answerAr      String?
+  answerEn      String?
+
+  reviewedById  String?
+  reviewedBy    User?          @relation("QuestionReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt    DateTime?
+  createdAt     DateTime       @default(now())
+
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// Shahada / new-Muslim onboarding track
+// ---------------------------------------------------------------------------
+model ShahadaStep {
+  id        Int     @id @default(autoincrement())
+  order     Int
+  titleAr   String
+  titleEn   String
+  bodyAr    String
+  bodyEn    String
+  isRite    Boolean @default(false) // marks the shahada pronouncement step
+}
+
+model ContactRequest {
+  id         String   @id @default(cuid())
+  name       String
+  email      String
+  language   String   @default("en")
+  message    String
+  handled    Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Platform configuration (owner branding, feature flags)
+// ---------------------------------------------------------------------------
+model PlatformConfig {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}

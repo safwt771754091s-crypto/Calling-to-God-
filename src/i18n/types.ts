@@ -1,0 +1,173 @@
+export interface Dictionary {
+  meta: {
+    title: string;
+    description: string;
+  };
+  nav: {
+    home: string;
+    quran: string;
+    hadith: string;
+    biography: string;
+    qa: string;
+    shahada: string;
+    search: string;
+  };
+  common: {
+    language: string;
+    menu: string;
+    search: string;
+    searchPlaceholder: string;
+    readMore: string;
+    submit: string;
+    loading: string;
+    noResults: string;
+    surah: string;
+    verse: string;
+    verses: string;
+    chapter: string;
+    tafsir: string;
+    translation: string;
+    topics: string;
+    all: string;
+    back: string;
+    name: string;
+    email: string;
+    optional: string;
+    message: string;
+    send: string;
+    explore: string;
+    results: string;
+    clear: string;
+    of: string;
+    bookmark: string;
+    bookmarks: string;
+    removeBookmark: string;
+    share: string;
+    copyLink: string;
+    copied: string;
+    playAudio: string;
+    pauseAudio: string;
+  };
+  home: {
+    heroTitle: string;
+    heroSubtitle: string;
+    heroCta: string;
+    heroCtaSecondary: string;
+    introTitle: string;
+    introBody: string;
+    modulesTitle: string;
+    statSurahs: string;
+    statVerses: string;
+    statHadiths: string;
+    statLanguages: string;
+    featuredEyebrow: string;
+    featuredReadFull: string;
+    trustTitle: string;
+  };
+  modules: {
+    quranTitle: string;
+    quranDesc: string;
+    hadithTitle: string;
+    hadithDesc: string;
+    biographyTitle: string;
+    biographyDesc: string;
+    qaTitle: string;
+    qaDesc: string;
+    shahadaTitle: string;
+    shahadaDesc: string;
+  };
+  quran: {
+    title: string;
+    subtitle: string;
+    meccan: string;
+    medinan: string;
+    selectSurah: string;
+    searchSurah: string;
+    showTranslation: string;
+    tafsirSources: string;
+    readTafsir: string;
+    playAudio: string;
+    verseCountLabel: string;
+  };
+  hadith: {
+    title: string;
+    subtitle: string;
+    collections: string;
+    grade: string;
+    grades: {
+      SAHIH: string;
+      HASAN: string;
+      DAIF: string;
+      UNKNOWN: string;
+    };
+    number: string;
+    arabic: string;
+    english: string;
+    browseByTopic: string;
+    allCollections: string;
+  };
+  biography: {
+    title: string;
+    subtitle: string;
+    timeline: string;
+    eraMecca: string;
+    eraMedina: string;
+    year: string;
+  };
+  qa: {
+    title: string;
+    subtitle: string;
+    askQuestion: string;
+    yourQuestion: string;
+    category: string;
+    submitQuestion: string;
+    submitted: string;
+    submittedDesc: string;
+    aiNote: string;
+    pending: string;
+    publishedAnswers: string;
+    noAnswers: string;
+    answer: string;
+    askedBy: string;
+    answerPending: string;
+  };
+  shahada: {
+    title: string;
+    subtitle: string;
+    steps: string;
+    step: string;
+    of: string;
+    theShahada: string;
+    shahadaText: string;
+    shahadaMeaning: string;
+    contactDawah: string;
+    contactDesc: string;
+    iWantToConvert: string;
+    pillarsTitle: string;
+    pillars: string[];
+  };
+  footer: {
+    tagline: string;
+    taglineShort: string;
+    rights: string;
+    sources: string;
+    disclaimer: string;
+  };
+  search: {
+    title: string;
+    subtitle: string;
+    placeholder: string;
+    all: string;
+    quran: string;
+    hadith: string;
+    verses: string;
+    surahs: string;
+    openSurah: string;
+    viewHadith: string;
+    noResults: string;
+    hint: string;
+  };
+  a11y: {
+    skipToContent: string;
+  };
+}
