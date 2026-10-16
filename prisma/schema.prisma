@@ -27,6 +27,8 @@ model User {
   createdAt    DateTime @default(now())
 
   reviewedQuestions Question[] @relation("QuestionReviewer")
+  approvedContent   ContentItem[] @relation("ContentApprover")
+  auditLogs         AuditLog[]    @relation("AuditActor")
 }
 
 // ---------------------------------------------------------------------------
@@ -243,4 +245,217 @@ model PlatformConfig {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// AI dawah-agent platform
+//
+// A registry of specialised agents (planner, researcher, writer, localizer,
+// reviewer, publisher, analytics) that help publish introductory Islamic
+// content in the platform's languages, targeting regions such as India,
+// China and Japan. Every agent output is grounded, cited and — for anything
+// religiously sensitive — held for human approval before publication.
+// ---------------------------------------------------------------------------
+enum AgentKind {
+  PLANNER
+  RESEARCHER
+  WRITER
+  LOCALIZER
+  REVIEWER
+  PUBLISHER
+  ANALYTICS
+}
+
+enum AgentStatus {
+  ACTIVE
+  PAUSED
+}
+
+model Agent {
+  id          String      @id @default(cuid())
+  slug        String      @unique
+  nameAr      String
+  nameEn      String
+  kind        AgentKind
+  description String
+  status      AgentStatus @default(ACTIVE)
+  config      Json?
+  createdAt   DateTime    @default(now())
+
+  contentItems ContentItem[]
+  auditLogs    AuditLog[]
+}
+
+enum Region {
+  INDIA
+  CHINA
+  JAPAN
+  GLOBAL
+}
+
+model Campaign {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  nameAr    String
+  nameEn    String
+  region    Region
+  locales   String[] // subset of the platform's locale codes
+  theme     String?  // weekly/monthly theme
+  startDate DateTime?
+  endDate   DateTime?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  contentItems ContentItem[]
+  metrics      Metric[]
+}
+
+// Publication pipeline. Content only becomes PUBLISHED after a human approves
+// the religiously sensitive draft (SCHOLAR_REVIEW -> APPROVED).
+enum ContentStatus {
+  DRAFT             // generated, not yet checked
+  SOURCE_CHECKED    // sources verified by the researcher agent
+  LOCALIZED         // adapted per target language
+  SCHOLAR_REVIEW    // queued for a human reviewer
+  APPROVED          // human-approved, ready to publish
+  SCHEDULED         // queued for a specific time/region
+  PUBLISHED         // live on a social platform
+  REJECTED
+  FAILED
+}
+
+enum ContentType {
+  SOCIAL_POST
+  VIDEO_SCRIPT
+  ARTICLE
+  QA
+  INVITATION
+}
+
+model ContentItem {
+  id            String        @id @default(cuid())
+  campaignId    String?
+  campaign      Campaign?     @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  agentId       String?
+  agent         Agent?        @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  locale        String
+  region        Region        @default(GLOBAL)
+  contentType   ContentType   @default(SOCIAL_POST)
+  title         String?
+  body          String
+  status        ContentStatus @default(DRAFT)
+  sourceRefs    Json?         // [{ label, kind, ref }] citations recorded by the researcher
+  approvedById  String?
+  approvedBy    User?         @relation("ContentApprover", fields: [approvedById], references: [id], onDelete: SetNull)
+  approvedAt    DateTime?
+  scheduledAt   DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  publications Publication[]
+  auditLogs    AuditLog[]
+
+  @@index([status])
+  @@index([locale])
+}
+
+enum SocialPlatform {
+  FACEBOOK
+  INSTAGRAM
+  YOUTUBE
+  TIKTOK
+  X
+  TELEGRAM
+}
+
+// A connected account/page. Credentials are NEVER stored here — only the
+// reference to an environment variable that holds the token.
+model SocialAccount {
+  id             String         @id @default(cuid())
+  platform       SocialPlatform
+  handle         String
+  displayName    String?
+  credentialEnv  String?        // name of the env var holding the API token
+  scopes         String[]       // granted permissions
+  region         Region         @default(GLOBAL)
+  locales        String[]
+  enabled        Boolean        @default(false)
+  createdAt      DateTime       @default(now())
+
+  publications Publication[]
+
+  @@unique([platform, handle])
+}
+
+enum PublicationStatus {
+  PENDING
+  PUBLISHED
+  FAILED
+  BLOCKED   // halted by the kill switch or missing approval
+}
+
+model Publication {
+  id             String            @id @default(cuid())
+  contentId      String
+  content        ContentItem       @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  accountId      String?
+  account        SocialAccount?    @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  platform       SocialPlatform
+  region         Region            @default(GLOBAL)
+  locale         String
+  status         PublicationStatus @default(PENDING)
+  idempotencyKey String            @unique // prevents accidental duplicate posting
+  remoteId       String?           // platform post id
+  remoteUrl      String?
+  scheduledAt    DateTime?
+  publishedAt    DateTime?
+  attempts       Int               @default(0)
+  error          String?
+  createdAt      DateTime          @default(now())
+
+  @@index([status])
+}
+
+enum MetricKind {
+  REACH
+  ENGAGEMENT
+  CLICKS
+  SITE_VISITS
+  FOLLOWERS
+}
+
+model Metric {
+  id          String     @id @default(cuid())
+  campaignId  String?
+  campaign    Campaign?  @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  platform    SocialPlatform?
+  locale      String?
+  region      Region     @default(GLOBAL)
+  kind        MetricKind
+  value       Int
+  capturedAt  DateTime   @default(now())
+  source      String     @default("manual") // manual | platform_api
+
+  @@index([kind])
+  @@index([capturedAt])
+}
+
+// Immutable audit trail: who did what, when, and the result.
+model AuditLog {
+  id         String      @id @default(cuid())
+  actorId    String?
+  actor      User?       @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  actorType  String      @default("user") // user | agent | system
+  action     String
+  entityType String
+  entityId   String?
+  agentId    String?
+  agent      Agent?      @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  contentId  String?
+  content    ContentItem? @relation(fields: [contentId], references: [id], onDelete: SetNull)
+  detail     Json?
+  createdAt  DateTime    @default(now())
+
+  @@index([action])
+  @@index([createdAt])
 }

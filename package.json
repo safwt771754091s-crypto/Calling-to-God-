@@ -13,6 +13,7 @@
     "ingest:tafsir": "tsx scripts/ingest/tafsir.ts",
     "ingest:hadith": "tsx scripts/ingest/hadith.ts",
     "seed": "tsx scripts/seed.ts",
+    "seed:agents": "tsx scripts/seed-agents.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },

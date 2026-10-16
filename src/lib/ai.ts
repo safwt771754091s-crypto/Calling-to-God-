@@ -28,6 +28,67 @@ export function activeModel(): string {
   return process.env.AI_MODEL ?? (activeProvider() === "gemini" ? "gemini-1.5-flash" : "gpt-4o-mini");
 }
 
+export interface ChatResult {
+  text: string;
+  provider: AiProvider;
+  model: string;
+}
+
+/** True when a real LLM key is configured (otherwise agents run offline). */
+export function aiEnabled(): boolean {
+  const provider = activeProvider();
+  if (provider === "openai") return Boolean(process.env.OPENAI_API_KEY);
+  if (provider === "gemini") return Boolean(process.env.GEMINI_API_KEY);
+  return false;
+}
+
+/**
+ * Generic single-turn completion used by the content agents. Returns the raw
+ * model text; callers remain responsible for grounding and citation checks.
+ */
+export async function generateText(
+  system: string,
+  user: string,
+  temperature = 0.4,
+): Promise<ChatResult> {
+  const provider = activeProvider();
+  const model = activeModel();
+
+  if (provider === "openai") {
+    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const res = await client.chat.completions.create({
+      model,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      temperature,
+    });
+    return { text: res.choices[0]?.message?.content ?? "", provider, model };
+  }
+
+  if (provider === "gemini") {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: system }] },
+        contents: [{ role: "user", parts: [{ text: user }] }],
+        generationConfig: { temperature },
+      }),
+    });
+    if (!res.ok) throw new Error(`Gemini error ${res.status}: ${await res.text()}`);
+    const data = (await res.json()) as {
+      candidates?: { content?: { parts?: { text?: string }[] } }[];
+    };
+    const text = data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+    return { text, provider, model };
+  }
+
+  return { text: "", provider: "mock", model: "heuristic" };
+}
+
 /** Retrieve a few relevant corpus excerpts to ground the answer. */
 async function retrieveContext(question: string, limit = 4): Promise<string[]> {
   const terms = question
