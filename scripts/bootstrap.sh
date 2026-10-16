@@ -41,6 +41,7 @@ if [ "${VERSE_COUNT:-0}" = "0" ]; then
   npm run ingest:hadith
 fi
 npm run seed
+npm run seed:agents
 
 # --- Build + serve -----------------------------------------------------------
 if [ ! -f .next/standalone/server.js ]; then
