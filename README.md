@@ -78,3 +78,9 @@ Azizul Haque, Ryoichi Mita). Tafsir and hadith come from open datasets
 (`spa5k/tafsir_api`, `fawazahmed0/hadith-api` and `quran.com`). The platform
 publishes no unattributed answers: every Q&A response is drafted by AI and then
 approved by a human scholar.
+
+## Deployment
+
+See [`docs/deployment.md`](docs/deployment.md) for a permanent deploy (Vercel + managed
+Postgres). The repo ships `vercel.json`, a `postinstall` Prisma generate hook, and a
+`db:deploy` script so migrations run on every release.
