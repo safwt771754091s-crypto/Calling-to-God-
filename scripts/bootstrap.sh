@@ -36,12 +36,14 @@ npx prisma migrate deploy
 VERSE_COUNT=$(npx tsx -e 'import "dotenv/config";import p from "./src/lib/db";p.verse.count().then(c=>{console.log(c);process.exit(0)}).catch(()=>{console.log(0);process.exit(0)})' 2>/dev/null | tail -1)
 if [ "${VERSE_COUNT:-0}" = "0" ]; then
   echo "→ Empty database detected — importing content from .cache/ingest…"
-  npm run ingest:quran
-  npm run ingest:tafsir
-  npm run ingest:hadith
+  # Ingest is best-effort: a partially-populated DB can make a rerun collide on
+  # unique keys, and that must not abort the whole bring-up.
+  npm run ingest:quran  || echo "warn: ingest:quran failed (continuing)"
+  npm run ingest:tafsir || echo "warn: ingest:tafsir failed (continuing)"
+  npm run ingest:hadith || echo "warn: ingest:hadith failed (continuing)"
 fi
-npm run seed
-npm run seed:agents
+npm run seed        || echo "warn: seed failed (continuing)"
+npm run seed:agents || echo "warn: seed:agents failed (continuing)"
 
 # --- Build + serve -----------------------------------------------------------
 if [ ! -f .next/standalone/server.js ]; then
