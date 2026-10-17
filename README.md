@@ -4,6 +4,12 @@ A multi-lingual dawah platform that introduces Islam and publishes the sciences 
 the Quran and the Sunnah to Western and European audiences, in six languages:
 English, Arabic, Chinese, Hindi, Japanese and Russian.
 
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fsafwt771754091s-crypto%2FCalling-to-God-)
+
+> One-click deploy to Vercel. You will be asked for `DATABASE_URL` (a permanent
+> Postgres such as Neon/Supabase), `AUTH_SECRET` and `AUTH_URL`. See
+> [`docs/deployment.md`](docs/deployment.md) for the full walkthrough.
+
 ## Modules
 
 | Module | Route | Description |
