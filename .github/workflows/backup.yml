@@ -1,0 +1,49 @@
+name: Database backup
+
+# Nightly logical backup of the production database. Needs a DATABASE_URL
+# repository secret pointing at production Postgres; without it the job exits
+# cleanly. Dumps are kept as workflow artifacts for 30 days.
+# For long-term retention, point this at S3/R2 or rely on the managed Postgres
+# provider's own automated backups (Neon/Supabase both include them).
+
+on:
+  schedule:
+    - cron: "0 2 * * *" # 02:00 UTC daily
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for DATABASE_URL
+        id: creds
+        run: |
+          if [ -n "${{ secrets.DATABASE_URL }}" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::DATABASE_URL secret not configured — skipping backup."
+          fi
+
+      - name: Install postgres client
+        if: steps.creds.outputs.ok == 'true'
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Dump database
+        if: steps.creds.outputs.ok == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          mkdir -p backups
+          pg_dump --no-owner --no-privileges "$DATABASE_URL" | gzip > "backups/trupath-$(date +%Y%m%d-%H%M%S).sql.gz"
+          ls -lh backups
+
+      - name: Upload backup artifact
+        if: steps.creds.outputs.ok == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_id }}
+          path: backups/*.sql.gz
+          retention-days: 30

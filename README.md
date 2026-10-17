@@ -90,3 +90,10 @@ approved by a human scholar.
 See [`docs/deployment.md`](docs/deployment.md) for a permanent deploy (Vercel + managed
 Postgres). The repo ships `vercel.json`, a `postinstall` Prisma generate hook, and a
 `db:deploy` script so migrations run on every release.
+
+## Automation
+
+CI, deploy-on-green, nightly backups, Dependabot and a `make` task runner are all
+wired up — see [`docs/automation.md`](docs/automation.md). `make help` lists every
+task; `make verify` runs what CI runs; `make smoke BASE=https://…` checks a live
+instance.

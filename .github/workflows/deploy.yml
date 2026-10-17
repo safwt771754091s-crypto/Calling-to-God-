@@ -1,0 +1,76 @@
+name: Deploy (Vercel)
+
+# Deploys to Vercel only after the CI workflow succeeds on main, and can be run
+# by hand. Requires three repository secrets:
+#   VERCEL_TOKEN       (Vercel → Account Settings → Tokens)
+#   VERCEL_ORG_ID      (from `vercel link` → .vercel/project.json)
+#   VERCEL_PROJECT_ID
+# Until those exist the deploy step is skipped, so the workflow is safe to keep.
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Check for Vercel credentials
+        id: creds
+        run: |
+          if [ -n "${{ secrets.VERCEL_TOKEN }}" ] && [ -n "$VERCEL_ORG_ID" ] && [ -n "$VERCEL_PROJECT_ID" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Vercel secrets not configured — skipping deploy."
+          fi
+
+      - name: Install Vercel CLI
+        if: steps.creds.outputs.ok == 'true'
+        run: npm i -g vercel@latest
+
+      - name: Pull Vercel environment
+        if: steps.creds.outputs.ok == 'true'
+        run: vercel pull --yes --environment=production --token="${{ secrets.VERCEL_TOKEN }}"
+
+      - name: Build
+        if: steps.creds.outputs.ok == 'true'
+        run: vercel build --prod --token="${{ secrets.VERCEL_TOKEN }}"
+
+      - name: Deploy
+        if: steps.creds.outputs.ok == 'true'
+        run: |
+          url=$(vercel deploy --prebuilt --prod --token="${{ secrets.VERCEL_TOKEN }}")
+          echo "Deployed: $url"
+          echo "### ✅ Deployed to $url" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Smoke test production
+        if: steps.creds.outputs.ok == 'true'
+        env:
+          PROD_URL: ${{ secrets.PRODUCTION_URL }}
+        run: |
+          if [ -n "$PROD_URL" ]; then
+            bash scripts/smoke.sh "$PROD_URL"
+          else
+            echo "::notice::Set PRODUCTION_URL secret to enable post-deploy smoke test."
+          fi

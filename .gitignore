@@ -44,3 +44,6 @@ next-env.d.ts
 
 # content ingest cache (large; recreated by npm run ingest:*)
 /.cache/
+
+# local db backups
+/backups
