@@ -1,14 +1,8 @@
 import type { MetadataRoute } from "next";
 import { locales } from "@/i18n/config";
-import { absoluteUrl } from "@/lib/site";
+import { absoluteUrl, languageAlternates } from "@/lib/site";
 
 const STATIC_PATHS = ["", "quran", "hadith", "biography", "qa", "shahada", "search"];
-
-function alternates(path: string) {
-  const languages: Record<string, string> = {};
-  for (const locale of locales) languages[locale] = absoluteUrl(locale, path);
-  return languages;
-}
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const entries: MetadataRoute.Sitemap = [];
@@ -21,7 +15,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
         lastModified: now,
         changeFrequency: path === "" ? "daily" : "weekly",
         priority: path === "" ? 1 : 0.8,
-        alternates: { languages: alternates(path) },
+        alternates: { languages: languageAlternates(path) },
       });
     }
   }
@@ -34,7 +28,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
         lastModified: now,
         changeFrequency: "monthly",
         priority: 0.6,
-        alternates: { languages: alternates(path) },
+        alternates: { languages: languageAlternates(path) },
       });
     }
   }

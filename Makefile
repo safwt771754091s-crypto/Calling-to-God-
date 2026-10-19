@@ -12,7 +12,8 @@ endif
 .PHONY: help install gen migrate migrate-dev seed seed-agents ingest \
         dev build start test test-watch lint typecheck verify \
         up down logs ps backup restore smoke reset clean \
-        i18n-audit content-generate corpus-check
+        i18n-audit content-generate corpus-check \
+        ops-links ops-seo ops-security ops-monitor
 
 help: ## Show this help
 	@grep -hE '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) | \
@@ -50,6 +51,18 @@ content-generate: ## Draft dawah content (LIMIT=5 PERIOD=weekly)
 
 corpus-check: ## Verify the Quran/hadith/tafsir corpus is complete
 	npm run corpus:check
+
+ops-links: ## Check for broken links (BASE=https://… MAX=80)
+	npm run ops:links -- --base "$(or $(BASE),http://localhost:12000)" --max "$(or $(MAX),80)"
+
+ops-seo: ## Audit the sitemap/hreflang/robots (BASE=https://…)
+	npm run ops:seo -- --base "$(or $(BASE),http://localhost:12000)"
+
+ops-security: ## Scan production dependencies for vulnerabilities
+	npm run ops:security -- --prod --threshold high
+
+ops-monitor: ## Ping the live site and alert on failure (BASE=https://…)
+	npm run ops:monitor -- --base "$(or $(BASE),$(PRODUCTION_URL))"
 
 dev: ## Run the dev server
 	npm run dev

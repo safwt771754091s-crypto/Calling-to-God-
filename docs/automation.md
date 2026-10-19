@@ -32,6 +32,8 @@ The only manual step left is entering your hosting/database credentials once.
 | `backup.yml` | nightly 02:00 UTC, or manual | `pg_dump` of production → artifact kept 30 days |
 | `content-generation.yml` | Mondays 06:00 UTC, or manual | runs the agent pipeline to draft content into `SCHOLAR_REVIEW` |
 | `content-verify.yml` | Sundays 03:00 UTC, or manual | corpus integrity + translation drift audit |
+| `security.yml` | push, PRs, Mondays 04:00 UTC | production dependency audit (gates on high+) + full report |
+| `monitor.yml` | every 30 min, or manual | pings the live site and alerts a webhook on failure |
 
 Every workflow that needs a secret **skips cleanly** when the secret is absent, so
 the repo is safe to keep public before you configure hosting.
@@ -45,10 +47,22 @@ Add these in **Settings → Secrets and variables → Actions**:
 | `VERCEL_TOKEN` | deploy | Vercel → Account Settings → Tokens |
 | `VERCEL_ORG_ID` | deploy | `vercel link` → `.vercel/project.json` |
 | `VERCEL_PROJECT_ID` | deploy | `vercel link` → `.vercel/project.json` |
-| `PRODUCTION_URL` | deploy smoke | your deployed URL |
+| `PRODUCTION_URL` | deploy smoke, monitor | your deployed URL |
 | `DATABASE_URL` | backup, content-generation, content-verify | production Postgres string |
 | `AI_PROVIDER` | content-generation | `openai` or `gemini` (default `mock`) |
 | `OPENAI_API_KEY` / `GEMINI_API_KEY` | content-generation | your LLM key |
+| `SLACK_WEBHOOK_URL` / `DISCORD_WEBHOOK_URL` / `ALERT_WEBHOOK_URL` | monitor | a webhook to receive downtime alerts |
+
+## Operations checks
+
+| Command | What it checks |
+| --- | --- |
+| `make ops-links BASE=https://…` | every internal + external link on the site (broken links fail) |
+| `make ops-seo BASE=https://…` | sitemap structure, hreflang alternates + x-default, robots.txt |
+| `make ops-security` | production dependency vulnerabilities (gates on high+) |
+| `make ops-monitor BASE=https://…` | liveness of `/api/health` and the home page; alerts a webhook |
+
+`deploy.yml` runs `ops-seo` automatically after a successful deploy.
 
 ## Dependabot
 

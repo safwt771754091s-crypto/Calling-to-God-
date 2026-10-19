@@ -94,7 +94,10 @@ Postgres). The repo ships `vercel.json`, a `postinstall` Prisma generate hook, a
 ## Automation
 
 CI, deploy-on-green, nightly backups, scheduled content generation, weekly
-corpus/translation verification, Dependabot and a `make` task runner are all wired
+corpus/translation verification, a dependency security scan, a 30-minute uptime
+monitor, Dependabot and a `make` task runner are all wired
 up — see [`docs/automation.md`](docs/automation.md). `make help` lists every task;
 `make verify` runs what CI runs; `make smoke BASE=https://…` checks a live instance;
-`make content-generate` drafts content into the scholar review queue.
+`make content-generate` drafts content into the scholar review queue;
+`make ops-links`/`ops-seo`/`ops-security`/`ops-monitor` cover link, SEO,
+dependency and uptime health.

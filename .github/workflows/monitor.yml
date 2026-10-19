@@ -1,0 +1,47 @@
+name: Uptime monitor
+
+# Checks the live site every 30 minutes and alerts on failure. Add PRODUCTION_URL
+# as a repository secret; optionally add SLACK_WEBHOOK_URL / DISCORD_WEBHOOK_URL /
+# ALERT_WEBHOOK_URL to receive an alert. Without PRODUCTION_URL the run is a no-op.
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: uptime-monitor
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check for PRODUCTION_URL
+        id: creds
+        run: |
+          if [ -n "${{ secrets.PRODUCTION_URL }}" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::PRODUCTION_URL secret not configured — skipping monitor."
+          fi
+
+      - name: Monitor production
+        if: steps.creds.outputs.ok == 'true'
+        env:
+          PRODUCTION_URL: ${{ secrets.PRODUCTION_URL }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+        run: npm run ops:monitor -- --base "$PRODUCTION_URL" --retries 3 --delay 10000

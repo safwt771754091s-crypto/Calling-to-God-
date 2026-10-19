@@ -71,6 +71,7 @@ jobs:
         run: |
           if [ -n "$PROD_URL" ]; then
             bash scripts/smoke.sh "$PROD_URL"
+            npm run ops:seo -- --base "$PROD_URL"
           else
-            echo "::notice::Set PRODUCTION_URL secret to enable post-deploy smoke test."
+            echo "::notice::Set PRODUCTION_URL secret to enable post-deploy checks."
           fi
