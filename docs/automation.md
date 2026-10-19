@@ -16,6 +16,9 @@ The only manual step left is entering your hosting/database credentials once.
 | `make up` / `make down` | start / stop the compose stack |
 | `make ingest` | import Quran, tafsir, hadith |
 | `make seed` / `make seed-agents` | seed staff + dawah agents |
+| `make i18n-audit` | fail if any locale dictionary drifted from English |
+| `make content-generate` | draft dawah content (`LIMIT=5 PERIOD=weekly`) |
+| `make corpus-check` | verify the Quran/hadith/tafsir corpus is complete |
 | `make smoke BASE=https://…` | smoke-test a running instance |
 | `make backup` / `make restore FILE=…` | dump / restore the database |
 | `make reset` | recreate the local DB, then ingest + seed |
@@ -24,12 +27,14 @@ The only manual step left is entering your hosting/database credentials once.
 
 | Workflow | Trigger | What it does |
 | --- | --- | --- |
-| `ci.yml` | push to `main`/`master`, PRs | install → migrate → ingest → typecheck → lint → test → build → **smoke test** |
+| `ci.yml` | push to `main`/`master`, PRs | install → migrate → ingest → typecheck → lint → **i18n audit** → test → build → **smoke test** |
 | `deploy.yml` | after CI succeeds on `main`, or manual | builds and deploys to Vercel, then smoke-tests production |
 | `backup.yml` | nightly 02:00 UTC, or manual | `pg_dump` of production → artifact kept 30 days |
+| `content-generation.yml` | Mondays 06:00 UTC, or manual | runs the agent pipeline to draft content into `SCHOLAR_REVIEW` |
+| `content-verify.yml` | Sundays 03:00 UTC, or manual | corpus integrity + translation drift audit |
 
-`deploy.yml` and `backup.yml` **skip cleanly** when their secrets are absent, so the
-repo is safe to keep public before you configure hosting.
+Every workflow that needs a secret **skips cleanly** when the secret is absent, so
+the repo is safe to keep public before you configure hosting.
 
 ### Secrets to enable full automation
 
@@ -41,7 +46,9 @@ Add these in **Settings → Secrets and variables → Actions**:
 | `VERCEL_ORG_ID` | deploy | `vercel link` → `.vercel/project.json` |
 | `VERCEL_PROJECT_ID` | deploy | `vercel link` → `.vercel/project.json` |
 | `PRODUCTION_URL` | deploy smoke | your deployed URL |
-| `DATABASE_URL` | backup | production Postgres string |
+| `DATABASE_URL` | backup, content-generation, content-verify | production Postgres string |
+| `AI_PROVIDER` | content-generation | `openai` or `gemini` (default `mock`) |
+| `OPENAI_API_KEY` / `GEMINI_API_KEY` | content-generation | your LLM key |
 
 ## Dependabot
 
@@ -56,6 +63,9 @@ Docker. Each PR runs through `ci.yml` automatically.
 | `scripts/watchdog.sh` | keep the stack alive on a long-lived host |
 | `scripts/smoke.sh` | end-to-end HTTP checks (used by CI and `deploy.yml`) |
 | `scripts/backup-db.sh` | `pg_dump` / restore via local client or the db container |
+| `scripts/i18n-audit.ts` | translation-drift audit across the six locales |
+| `scripts/generate-content.ts` | plan + agent pipeline → `SCHOLAR_REVIEW` drafts |
+| `scripts/corpus-check.ts` | Quran/hadith/tafsir integrity check |
 | `scripts/start.sh` | serve the standalone build |
 | `scripts/ingest/*` | content importers |
 | `scripts/seed*.ts` | seeders |

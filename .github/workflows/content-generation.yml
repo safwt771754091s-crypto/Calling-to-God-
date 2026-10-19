@@ -1,0 +1,68 @@
+name: Content generation
+
+# Drafts dawah content on a schedule by running the agent pipeline. It NEVER
+# publishes: every item lands in SCHOLAR_REVIEW for a human. Requires a
+# DATABASE_URL repository secret; without it the job exits cleanly.
+#
+# To let the agents use a real LLM, also set the AI_PROVIDER secret
+# (openai|gemini) and the matching OPENAI_API_KEY / GEMINI_API_KEY secret.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1" # Mondays 06:00 UTC
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "Max items to generate"
+        default: "5"
+      period:
+        description: "weekly | monthly"
+        default: "weekly"
+
+concurrency:
+  group: content-generation
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for DATABASE_URL
+        id: creds
+        run: |
+          if [ -n "${{ secrets.DATABASE_URL }}" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::DATABASE_URL secret not configured — skipping."
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.creds.outputs.ok == 'true'
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.creds.outputs.ok == 'true'
+        run: npm ci
+
+      - name: Generate Prisma client
+        if: steps.creds.outputs.ok == 'true'
+        run: npx prisma generate
+
+      - name: Generate content drafts
+        if: steps.creds.outputs.ok == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          AI_PROVIDER: ${{ secrets.AI_PROVIDER || 'mock' }}
+          AI_MODEL: ${{ secrets.AI_MODEL }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          LIMIT: ${{ github.event.inputs.limit || '5' }}
+          PERIOD: ${{ github.event.inputs.period || 'weekly' }}
+        run: |
+          npm run content:generate -- --period "$PERIOD" --limit "$LIMIT"
+          echo "### Drafts queued for scholar review" >> "$GITHUB_STEP_SUMMARY"

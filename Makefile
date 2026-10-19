@@ -11,10 +11,11 @@ endif
 
 .PHONY: help install gen migrate migrate-dev seed seed-agents ingest \
         dev build start test test-watch lint typecheck verify \
-        up down logs ps backup restore smoke reset clean
+        up down logs ps backup restore smoke reset clean \
+        i18n-audit content-generate corpus-check
 
 help: ## Show this help
-	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
+	@grep -hE '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) | \
 		awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
 
 install: ## Install dependencies + generate Prisma client
@@ -40,6 +41,15 @@ ingest: ## Import Quran, tafsir and hadith from the open datasets
 	npm run ingest:quran
 	npm run ingest:tafsir
 	npm run ingest:hadith
+
+i18n-audit: ## Verify no locale dictionary has drifted from English
+	npm run i18n:audit
+
+content-generate: ## Draft dawah content (LIMIT=5 PERIOD=weekly)
+	npm run content:generate -- --period "$(or $(PERIOD),weekly)" --limit "$(or $(LIMIT),5)"
+
+corpus-check: ## Verify the Quran/hadith/tafsir corpus is complete
+	npm run corpus:check
 
 dev: ## Run the dev server
 	npm run dev

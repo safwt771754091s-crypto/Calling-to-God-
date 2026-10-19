@@ -1,0 +1,48 @@
+name: Content verification
+
+# Weekly integrity check of the production corpus and the translation files.
+#   - corpus-check: verifies Quran/hadith/tafsir counts and every locale
+#   - i18n-audit:   verifies no locale dictionary has drifted from English
+# Needs a DATABASE_URL repository secret for the corpus half; the i18n half
+# always runs (it only reads the repo).
+
+on:
+  schedule:
+    - cron: "0 3 * * 0" # Sundays 03:00 UTC
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Translation drift audit
+        run: npm run i18n:audit
+
+      - name: Check for DATABASE_URL
+        id: creds
+        run: |
+          if [ -n "${{ secrets.DATABASE_URL }}" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::DATABASE_URL secret not configured — skipping corpus check."
+          fi
+
+      - name: Corpus integrity
+        if: steps.creds.outputs.ok == 'true'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npm run corpus:check

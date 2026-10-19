@@ -57,6 +57,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Translation drift audit
+        run: npm run i18n:audit
+
       - name: Test
         run: npm test
 
