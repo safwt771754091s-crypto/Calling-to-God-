@@ -57,7 +57,7 @@
     "prisma": "^7.10.0",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
-    "typescript": "^5",
+    "typescript": "^7",
     "vitest": "^3.2.7",
     "workbox-build": "^7.4.1"
   }
