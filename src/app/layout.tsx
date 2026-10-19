@@ -5,6 +5,7 @@ import {
   IBM_Plex_Sans_Arabic,
   Amiri_Quran,
 } from "next/font/google";
+import { PwaRegistrar } from "@/components/pwa-registrar";
 import "./globals.css";
 
 const display = Fraunces({
@@ -49,7 +50,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${body.variable} ${display.variable} ${arabic.variable} ${quran.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <PwaRegistrar />
+      </body>
     </html>
   );
 }

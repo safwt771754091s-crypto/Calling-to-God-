@@ -14,6 +14,7 @@ fi
 
 # Standalone output does not include static/public/generated assets.
 mkdir -p .next/standalone/.next .next/standalone/src
+rm -rf .next/standalone/.next/static .next/standalone/public
 cp -r .next/static .next/standalone/.next/static
 cp -r public .next/standalone/public 2>/dev/null || true
 cp -r src/generated .next/standalone/src/generated
